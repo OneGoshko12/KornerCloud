@@ -2,6 +2,11 @@
 __pycache__/
 *.py[codz]
 *$py.class
+*.pyc
+
+# Specific for this project
+core/media/
+core/staticfiles/
 
 # C extensions
 *.so
