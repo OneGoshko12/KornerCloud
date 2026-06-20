@@ -1,0 +1,8 @@
+django==6.0.4
+qrcode==8.2
+pillow==12.2.0
+python_decouple==3.8
+django-axes==8.3.1
+django-otp==1.7.0
+gunicorn==26.0.0
+

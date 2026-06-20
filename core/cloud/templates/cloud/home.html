@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}KornerCloud{% endblock %}
+
+
+{% block extra_head %}
+<style>
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.12; transform: scale(0.75); }
+        50%       { opacity: 0.90; transform: scale(1.25); }
+    }
+    .star {
+        position: fixed; border-radius: 50%; background: #fff;
+        animation: twinkle ease-in-out infinite;
+        z-index: 2; pointer-events: none;
+    }
+    @media (max-width: 480px) { .star:nth-child(even) { display: none; } }
+
+    /* ── Override wrapper for vertical centering ── */
+    .page-wrapper { padding-bottom: calc(280px + 2rem); }
+
+    /* ── Brand title ────────────────────────────── */
+    .home-brand {
+        font-family: 'Sora', sans-serif;
+        font-size: clamp(1.8rem, 5vw, 3rem);
+        font-weight: 700;
+        color: #f0f4ff;
+        text-align: center;
+        letter-spacing: -0.02em;
+        margin-bottom: 2.8rem;
+    }
+
+    /* ── Nav cards ──────────────────────────────── */
+    .home-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+        width: 100%;
+        max-width: 440px;
+    }
+
+    .home-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2.2rem 1.5rem;
+        background: rgba(13, 19, 31, 0.88);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        text-decoration: none;
+        color: var(--text);
+        transition: background 0.22s, border-color 0.22s, transform 0.18s;
+        cursor: pointer;
+    }
+
+    .home-card:hover {
+        background: rgba(22, 32, 50, 0.95);
+        border-color: rgba(255,255,255,0.18);
+        transform: translateY(-3px);
+    }
+
+    .home-card:active { transform: translateY(-1px); }
+
+    .home-card-icon {
+        width: 56px; height: 56px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.06);
+        border-radius: 14px;
+        color: #8ab4e8;
+    }
+
+    .home-card-icon svg { width: 30px; height: 30px; }
+
+    .home-card-label {
+        font-family: 'Sora', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #e2e8f5;
+        letter-spacing: 0.01em;
+    }
+
+    /* ── Logout ─────────────────────────────────── */
+    .home-logout {
+        margin-top: 2rem;
+        text-align: center;
+    }
+
+    .home-logout a {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color 0.2s;
+        padding: 0.4rem 0.8rem;
+        border-radius: 6px;
+    }
+
+    .home-logout a:hover { color: var(--text-sub); }
+
+    /* ── Responsive ─────────────────────────────── */
+    @media (max-width: 360px) {
+        .home-grid { grid-template-columns: 1fr; max-width: 220px; }
+        .home-card  { padding: 1.8rem 1.2rem; }
+    }
+</style>
+{% endblock %}
+
+
+{% block stars %}
+<div class="star" style="left:4%;  top:8%;  width:2px;height:2px;animation-duration:3.1s;animation-delay:0.0s;"></div>
+<div class="star" style="left:9%;  top:22%; width:1px;height:1px;animation-duration:4.6s;animation-delay:1.2s;"></div>
+<div class="star" style="left:15%; top:6%;  width:2px;height:2px;animation-duration:2.8s;animation-delay:0.5s;"></div>
+<div class="star" style="left:22%; top:15%; width:1px;height:1px;animation-duration:5.2s;animation-delay:2.1s;"></div>
+<div class="star" style="left:28%; top:4%;  width:3px;height:3px;animation-duration:3.7s;animation-delay:0.8s;"></div>
+<div class="star" style="left:40%; top:10%; width:2px;height:2px;animation-duration:6.0s;animation-delay:1.7s;"></div>
+<div class="star" style="left:52%; top:5%;  width:2px;height:2px;animation-duration:5.5s;animation-delay:2.8s;"></div>
+<div class="star" style="left:64%; top:12%; width:3px;height:3px;animation-duration:3.2s;animation-delay:1.5s;"></div>
+<div class="star" style="left:75%; top:8%;  width:2px;height:2px;animation-duration:4.2s;animation-delay:0.4s;"></div>
+<div class="star" style="left:82%; top:18%; width:1px;height:1px;animation-duration:5.0s;animation-delay:2.6s;"></div>
+<div class="star" style="left:88%; top:5%;  width:2px;height:2px;animation-duration:3.6s;animation-delay:1.4s;"></div>
+<div class="star" style="left:93%; top:25%; width:1px;height:1px;animation-duration:6.1s;animation-delay:0.7s;"></div>
+<div class="star" style="left:11%; top:45%; width:2px;height:2px;animation-duration:4.4s;animation-delay:2.3s;"></div>
+<div class="star" style="left:58%; top:28%; width:1px;height:1px;animation-duration:4.8s;animation-delay:0.6s;"></div>
+<div class="star" style="left:78%; top:38%; width:1px;height:1px;animation-duration:3.3s;animation-delay:2.0s;"></div>
+{% endblock %}
+
+
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;width:100%;">
+
+    <h1 class="home-brand">KornerCloud</h1>
+
+    <div class="home-grid">
+
+        <!-- Files button -->
+        <a href="{% url 'cloud:files' %}" class="home-card">
+            <div class="home-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <span class="home-card-label">Files</span>
+        </a>
+
+        <!-- Media button -->
+        <a href="{% url 'cloud:media' %}" class="home-card">
+            <div class="home-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+            </div>
+            <span class="home-card-label">Media</span>
+        </a>
+
+    </div>
+
+    <div class="home-logout">
+        <a href="{% url 'login:logout' %}">Logout</a>
+    </div>
+
+</div>
+{% endblock %}

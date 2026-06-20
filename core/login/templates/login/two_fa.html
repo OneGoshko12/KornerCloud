@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Verification — YouKnow Cloud{% endblock %}
+
+
+{% block extra_head %}
+<style>
+    /* ── OTP input ──────────────────────────────── */
+    .field .otp-input {
+        text-align: center;
+        font-family: 'Sora', sans-serif;
+        font-size: 1.7rem;
+        font-weight: 600;
+        letter-spacing: 0.5em;
+        padding: 0.82rem 1rem;
+        /* pill shape inherited; no icon — symmetric padding */
+    }
+
+    .field .otp-input::placeholder {
+        letter-spacing: 0.35em;
+        font-size: 1.1rem;
+        color: var(--text-muted);
+    }
+
+    /* ── Hint text under OTP field ──────────────── */
+    .field-hint {
+        text-align: center;
+        font-size: 0.81rem;
+        color: var(--text-muted);
+        margin-top: -0.3rem;
+        margin-bottom: 0.8rem;
+        line-height: 1.4;
+    }
+
+    /* ── QR image ───────────────────────────────── */
+    .qr-image {
+        display: block;
+        margin: 0.8rem auto 1.2rem;
+        padding: 12px;
+        background: #ffffff;
+        border-radius: 12px;
+        width: 172px;
+        height: 172px;
+        object-fit: contain;
+    }
+
+    /* ── QR instruction text ────────────────────── */
+    .qr-instructions {
+        color: var(--text-sub);
+        font-size: 0.875rem;
+        line-height: 1.7;
+    }
+
+    .qr-instructions strong { color: var(--text); }
+    .qr-instructions .once  { color: #7eb8f7; font-weight: 600; }
+
+    /* ── Responsive OTP ─────────────────────────── */
+    @media (max-width: 480px) {
+        .field .otp-input {
+            font-size: 1.35rem;
+            letter-spacing: 0.32em;
+            padding: 0.78rem 0.8rem;
+        }
+
+        .field .otp-input::placeholder {
+            font-size: 0.95rem;
+            letter-spacing: 0.28em;
+        }
+
+        .qr-image { width: 148px; height: 148px; }
+
+        .qr-instructions { font-size: 0.83rem; }
+    }
+
+    @media (max-width: 360px) {
+        .field .otp-input {
+            font-size: 1.15rem;
+            letter-spacing: 0.22em;
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="card">
+    <h1 class="card-title">Verification</h1>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="field">
+            <input
+                class="otp-input"
+                type="text"
+                name="otp_token"
+                placeholder="000000"
+                maxlength="6"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="one-time-code"
+                autofocus
+                required
+            >
+        </div>
+
+        <p class="field-hint">6-digit code from Google Authenticator</p>
+
+        <button type="submit" class="btn-primary">Apply</button>
+    </form>
+</div>
+
+
+{# ── QR modal — only on the very first login ──────────────────────── #}
+{% if qr_b64 %}
+<div class="modal-overlay" id="qrModal">
+    <div class="modal">
+
+        <p class="modal-title">Set Up Google Authenticator</p>
+
+        <img
+            src="data:image/png;base64,{{ qr_b64 }}"
+            alt="Scan this QR code with Google Authenticator"
+            class="qr-image"
+        >
+
+        <p class="qr-instructions">
+            Open <strong>Google Authenticator</strong> on your phone.<br>
+            Tap <strong>+</strong> &rarr; <strong>Scan a QR code</strong>,<br>
+            then point your camera at the code above.<br><br>
+            This QR code appears <span class="once">only once</span>.<br>
+            Scan it, then enter the 6-digit code to continue.
+        </p>
+
+        <button
+            class="btn-primary"
+            style="margin-top: 1.4rem;"
+            onclick="document.getElementById('qrModal').style.display='none'">
+            Got it, close
+        </button>
+
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

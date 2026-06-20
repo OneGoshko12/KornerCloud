@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+
+{% block title %}Files — KornerCloud{% endblock %}
+
+
+{% block extra_head %}
+<style>
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.12; transform: scale(0.75); }
+        50%       { opacity: 0.90; transform: scale(1.25); }
+    }
+    .star {
+        position: fixed; border-radius: 50%; background: #fff;
+        animation: twinkle ease-in-out infinite;
+        z-index: 2; pointer-events: none;
+    }
+    @media (max-width: 480px) { .star:nth-child(even) { display: none; } }
+
+    /* ── Full-width override ────────────────────── */
+    .page-wrapper {
+        align-items: flex-start;
+        padding: 0 !important;
+    }
+
+    .cloud-page {
+        width: 100%;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: calc(280px + 1rem);
+    }
+
+    /* ── Top bar ─────────────────────────────────── */
+    .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.1rem 1.8rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background: rgba(7,9,14,0.7);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
+
+    .top-bar-back {
+        display: flex; align-items: center; gap: 0.4rem;
+        color: var(--text-muted); text-decoration: none;
+        font-size: 0.88rem; font-weight: 500;
+        transition: color 0.2s;
+        padding: 0.3rem 0;
+    }
+    .top-bar-back:hover { color: var(--text); }
+    .top-bar-back svg { width: 15px; height: 15px; }
+
+    .top-bar-title {
+        font-family: 'Sora', sans-serif;
+        font-size: 1.1rem; font-weight: 700;
+        color: #eef3ff;
+        position: absolute; left: 50%; transform: translateX(-50%);
+    }
+
+    .top-bar-logout {
+        font-size: 0.85rem; color: var(--text-muted);
+        text-decoration: none; transition: color 0.2s;
+        padding: 0.3rem 0;
+    }
+    .top-bar-logout:hover { color: var(--text); }
+
+    /* ── Action bar ──────────────────────────────── */
+    .action-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 1rem 1.8rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .action-btn {
+        display: flex; align-items: center; gap: 0.45rem;
+        padding: 0.55rem 1.2rem;
+        border-radius: 50px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.88rem; font-weight: 500;
+        cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.05);
+        color: var(--text);
+        transition: all 0.2s;
+        min-height: 38px;
+        white-space: nowrap;
+    }
+    .action-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .action-btn:hover {
+        background: rgba(255,255,255,0.10);
+        border-color: rgba(255,255,255,0.22);
+    }
+
+    /* Active states */
+    .action-btn.mode-download {
+        background: #ffffff; color: #080d18;
+        border-color: #ffffff;
+    }
+    .action-btn.mode-download:hover { background: #e8f0ff; }
+
+    .action-btn.mode-delete {
+        background: rgba(220,70,70,0.85); color: #fff;
+        border-color: transparent;
+    }
+    .action-btn.mode-delete:hover { background: rgba(220,70,70,1); }
+
+    /* ── Messages ────────────────────────────────── */
+    .messages-wrap { padding: 0.8rem 1.8rem 0; }
+
+    .message {
+        padding: 0.65rem 1rem; border-radius: 10px;
+        font-size: 0.875rem; font-weight: 500;
+        margin-bottom: 0.45rem; line-height: 1.45;
+    }
+    .message.error   { background:rgba(240,120,120,.10);color:var(--error);  border:1px solid rgba(240,120,120,.20); }
+    .message.success { background:rgba(110,201,138,.10);color:var(--success);border:1px solid rgba(110,201,138,.20); }
+    .message.warning { background:rgba(240,192, 96,.10);color:var(--warning);border:1px solid rgba(240,192, 96,.20); }
+
+    /* ── File list ───────────────────────────────── */
+    .file-list {
+        flex: 1;
+        padding: 1rem 1.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .file-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.85rem 1rem;
+        background: rgba(13,19,31,0.75);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        transition: background 0.18s, border-color 0.18s;
+        cursor: default;
+    }
+
+    .file-row.selectable { cursor: pointer; }
+    .file-row.selectable:hover {
+        background: rgba(22,32,50,0.90);
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    /* File type icon — colored square with ext text */
+    .file-icon {
+        width: 42px; height: 42px; flex-shrink: 0;
+        border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.65rem; font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+    }
+
+    /* Extension-based colours via CSS attribute selectors */
+    .file-icon[data-ext="zip"],.file-icon[data-ext="rar"],
+    .file-icon[data-ext="7z"],.file-icon[data-ext="tar"],
+    .file-icon[data-ext="gz"],.file-icon[data-ext="bz2"],
+    .file-icon[data-ext="xz"],.file-icon[data-ext="zst"] {
+        background:rgba(140,80,220,.18);color:#b07cf8;border-color:rgba(140,80,220,.3);
+    }
+    .file-icon[data-ext="pdf"],.file-icon[data-ext="doc"],
+    .file-icon[data-ext="docx"],.file-icon[data-ext="txt"],
+    .file-icon[data-ext="odt"],.file-icon[data-ext="rtf"],
+    .file-icon[data-ext="md"],.file-icon[data-ext="epub"] {
+        background:rgba(60,130,240,.18);color:#7aabf5;border-color:rgba(60,130,240,.3);
+    }
+    .file-icon[data-ext="xls"],.file-icon[data-ext="xlsx"],
+    .file-icon[data-ext="csv"],.file-icon[data-ext="ods"] {
+        background:rgba(60,200,100,.18);color:#6ecb80;border-color:rgba(60,200,100,.3);
+    }
+    .file-icon[data-ext="py"],.file-icon[data-ext="js"],
+    .file-icon[data-ext="ts"],.file-icon[data-ext="html"],
+    .file-icon[data-ext="css"],.file-icon[data-ext="json"],
+    .file-icon[data-ext="xml"],.file-icon[data-ext="sh"],
+    .file-icon[data-ext="php"],.file-icon[data-ext="rb"],
+    .file-icon[data-ext="go"],.file-icon[data-ext="rs"],
+    .file-icon[data-ext="java"],.file-icon[data-ext="c"],
+    .file-icon[data-ext="cpp"],.file-icon[data-ext="h"] {
+        background:rgba(240,200,60,.18);color:#f0d060;border-color:rgba(240,200,60,.3);
+    }
+    .file-icon[data-ext="exe"],.file-icon[data-ext="app"],
+    .file-icon[data-ext="dmg"],.file-icon[data-ext="deb"],
+    .file-icon[data-ext="rpm"],.file-icon[data-ext="msi"],
+    .file-icon[data-ext="apk"],.file-icon[data-ext="bat"] {
+        background:rgba(220,80,80,.18);color:#f07878;border-color:rgba(220,80,80,.3);
+    }
+    /* Default (other) */
+    .file-icon {
+        background:rgba(100,120,150,.15);color:#7a8aa8;border-color:rgba(100,120,150,.25);
+    }
+
+    /* File info */
+    .file-info { flex: 1; min-width: 0; }
+
+    .file-name {
+        font-size: 0.92rem; font-weight: 500;
+        color: var(--text);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .file-meta {
+        display: flex; align-items: center; gap: 0.6rem;
+        margin-top: 0.2rem;
+    }
+
+    .file-size { font-size: 0.78rem; color: var(--text-muted); }
+    .file-date { font-size: 0.78rem; color: var(--text-muted); }
+
+    .file-ext-badge {
+        font-size: 0.68rem; font-weight: 600;
+        padding: 0.1rem 0.45rem;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.07);
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    /* Checkbox */
+    .file-cb-wrap {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s;
+        flex-shrink: 0;
+    }
+
+    .file-cb-wrap.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .file-cb {
+        width: 18px; height: 18px;
+        accent-color: #7eb8f7;
+        cursor: pointer;
+    }
+
+    /* Empty state */
+    .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+        text-align: center;
+    }
+
+    .empty-state svg { width: 52px; height: 52px; opacity: 0.3; }
+    .empty-state p { font-size: 0.95rem; line-height: 1.6; }
+
+    /* ── Hidden forms ────────────────────────────── */
+    .hidden-forms { display: none; }
+
+    /* ── Responsive ─────────────────────────────── */
+    @media (max-width: 600px) {
+        .top-bar { padding: 0.9rem 1rem; }
+        .action-bar { padding: 0.8rem 1rem; gap: 0.5rem; }
+        .action-btn { padding: 0.5rem 0.9rem; font-size: 0.82rem; }
+        .file-list { padding: 0.8rem 1rem; }
+        .file-row { gap: 0.7rem; padding: 0.75rem 0.8rem; }
+        .file-icon { width: 36px; height: 36px; font-size: 0.58rem; }
+        .messages-wrap { padding: 0.6rem 1rem 0; }
+        .file-date { display: none; }
+    }
+</style>
+{% endblock %}
+
+
+{% block stars %}
+<div class="star" style="left:4%;  top:8%;  width:2px;height:2px;animation-duration:3.1s;animation-delay:0.0s;"></div>
+<div class="star" style="left:15%; top:6%;  width:2px;height:2px;animation-duration:2.8s;animation-delay:0.5s;"></div>
+<div class="star" style="left:28%; top:4%;  width:3px;height:3px;animation-duration:3.7s;animation-delay:0.8s;"></div>
+<div class="star" style="left:40%; top:10%; width:2px;height:2px;animation-duration:6.0s;animation-delay:1.7s;"></div>
+<div class="star" style="left:52%; top:5%;  width:2px;height:2px;animation-duration:5.5s;animation-delay:2.8s;"></div>
+<div class="star" style="left:64%; top:12%; width:3px;height:3px;animation-duration:3.2s;animation-delay:1.5s;"></div>
+<div class="star" style="left:75%; top:8%;  width:2px;height:2px;animation-duration:4.2s;animation-delay:0.4s;"></div>
+<div class="star" style="left:88%; top:5%;  width:2px;height:2px;animation-duration:3.6s;animation-delay:1.4s;"></div>
+<div class="star" style="left:93%; top:25%; width:1px;height:1px;animation-duration:6.1s;animation-delay:0.7s;"></div>
+<div class="star" style="left:22%; top:35%; width:1px;height:1px;animation-duration:5.2s;animation-delay:2.1s;"></div>
+<div class="star" style="left:58%; top:28%; width:1px;height:1px;animation-duration:4.8s;animation-delay:0.6s;"></div>
+<div class="star" style="left:78%; top:38%; width:1px;height:1px;animation-duration:3.3s;animation-delay:2.0s;"></div>
+{% endblock %}
+
+
+{% block content %}
+<div class="cloud-page">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+        <a href="{% url 'cloud:home' %}" class="top-bar-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Home
+        </a>
+        <span class="top-bar-title">Files</span>
+        <a href="{% url 'login:logout' %}" class="top-bar-logout">Logout</a>
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+
+        <!-- Upload -->
+        <button class="action-btn" onclick="document.getElementById('upload-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+            Upload
+        </button>
+
+        <!-- Download (two-click mode) -->
+        <button class="action-btn" id="btn-download" onclick="toggleMode('download')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="8 17 12 21 16 17"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+            </svg>
+            Download
+        </button>
+
+        <!-- Delete (two-click mode) -->
+        <button class="action-btn" id="btn-delete" onclick="toggleMode('delete')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            Delete
+        </button>
+
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages-wrap">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- File list -->
+    {% if files %}
+    <div class="file-list" id="file-list">
+        {% for file in files %}
+        <div class="file-row" id="row-{{ file.pk }}" onclick="rowClick(this, {{ file.pk }})">
+
+            <!-- Type icon (colour set by CSS data-ext selector) -->
+            <div class="file-icon" data-ext="{{ file.extension }}">
+                {{ file.extension|upper|slice:":4" }}
+            </div>
+
+            <!-- Name + meta -->
+            <div class="file-info">
+                <div class="file-name" title="{{ file.original_name }}">{{ file.original_name }}</div>
+                <div class="file-meta">
+                    <span class="file-ext-badge">.{{ file.extension }}</span>
+                    <span class="file-size">{{ file.size_display }}</span>
+                    <span class="file-date">{{ file.uploaded_at|date:"d M Y" }}</span>
+                </div>
+            </div>
+
+            <!-- Checkbox (hidden until selection mode) -->
+            <div class="file-cb-wrap" id="cb-wrap-{{ file.pk }}">
+                <input class="file-cb" type="checkbox"
+                       value="{{ file.pk }}"
+                       id="cb-{{ file.pk }}"
+                       onclick="event.stopPropagation()">
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>No files yet.<br>Click <strong>Upload</strong> to add your first file.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+
+<!-- Hidden forms (submit via JS) -->
+<div class="hidden-forms">
+
+    <!-- Upload -->
+    <form id="form-upload" method="post"
+          action="{% url 'cloud:upload_files' %}"
+          enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" id="upload-input" name="files" multiple
+               onchange="document.getElementById('form-upload').submit()">
+    </form>
+
+    <!-- Bulk download -->
+    <form id="form-download" method="post"
+          action="{% url 'cloud:download_files_bulk' %}">
+        {% csrf_token %}
+    </form>
+
+    <!-- Delete -->
+    <form id="form-delete" method="post"
+          action="{% url 'cloud:delete_files' %}">
+        {% csrf_token %}
+    </form>
+
+</div>
+
+
+<script>
+// ── Two-click mode ───────────────────────────────────────────────────
+let activeMode = null;  // null | 'download' | 'delete'
+
+function toggleMode(mode) {
+    if (activeMode === mode) {
+        // Second click — execute if anything selected, always cancel mode
+        const ids = getCheckedIds();
+        if (ids.length > 0) {
+            if (mode === 'download') submitForm('form-download', ids);
+            else                     submitForm('form-delete',   ids);
+        }
+        cancelMode();
+    } else {
+        cancelMode();
+        activeMode = mode;
+        setCheckboxes(true);
+        document.getElementById('btn-' + mode).classList.add('mode-' + mode);
+        // Mark rows as selectable
+        document.querySelectorAll('.file-row').forEach(r => r.classList.add('selectable'));
+    }
+}
+
+function cancelMode() {
+    if (!activeMode) return;
+    document.getElementById('btn-' + activeMode).classList.remove('mode-' + activeMode);
+    activeMode = null;
+    setCheckboxes(false);
+    uncheckAll();
+    document.querySelectorAll('.file-row').forEach(r => r.classList.remove('selectable'));
+}
+
+function setCheckboxes(visible) {
+    document.querySelectorAll('.file-cb-wrap').forEach(el => {
+        el.classList.toggle('visible', visible);
+    });
+}
+
+function uncheckAll() {
+    document.querySelectorAll('.file-cb').forEach(cb => cb.checked = false);
+}
+
+function getCheckedIds() {
+    return [...document.querySelectorAll('.file-cb:checked')].map(cb => cb.value);
+}
+
+// Click on a row (when in selection mode) toggles its checkbox
+function rowClick(row, pk) {
+    if (!activeMode) return;
+    const cb = document.getElementById('cb-' + pk);
+    if (cb) cb.checked = !cb.checked;
+}
+
+// Add IDs to form as hidden inputs and submit
+function submitForm(formId, ids) {
+    const form = document.getElementById(formId);
+    // Remove any previous hidden inputs
+    form.querySelectorAll('input[name="file_ids"]').forEach(el => el.remove());
+    ids.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'file_ids'; inp.value = id;
+        form.appendChild(inp);
+    });
+    form.submit();
+}
+
+// ── Escape key cancels mode ──────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') cancelMode();
+});
+</script>
+
+{% endblock %}

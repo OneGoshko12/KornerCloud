@@ -1,0 +1,688 @@
+{% extends 'base.html' %}
+
+{% block title %}Media — KornerCloud{% endblock %}
+
+
+{% block extra_head %}
+<style>
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.12; transform: scale(0.75); }
+        50%       { opacity: 0.90; transform: scale(1.25); }
+    }
+    .star {
+        position: fixed; border-radius: 50%; background: #fff;
+        animation: twinkle ease-in-out infinite;
+        z-index: 2; pointer-events: none;
+    }
+    @media (max-width: 480px) { .star:nth-child(even) { display: none; } }
+
+    /* ── Full-width override ────────────────────── */
+    .page-wrapper { align-items: flex-start; padding: 0 !important; }
+
+    .cloud-page {
+        width: 100%; min-height: 100dvh;
+        display: flex; flex-direction: column;
+        padding-bottom: calc(280px + 1rem);
+    }
+
+    /* ── Top bar (same as files.html) ───────────── */
+    .top-bar {
+        display: flex; align-items: center;
+        justify-content: space-between;
+        padding: 1.1rem 1.8rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background: rgba(7,9,14,0.7);
+        backdrop-filter: blur(12px);
+        position: sticky; top: 0; z-index: 20;
+    }
+    .top-bar-back {
+        display:flex;align-items:center;gap:.4rem;
+        color:var(--text-muted);text-decoration:none;
+        font-size:.88rem;font-weight:500;transition:color .2s;padding:.3rem 0;
+    }
+    .top-bar-back:hover{color:var(--text);}
+    .top-bar-back svg{width:15px;height:15px;}
+    .top-bar-title {
+        font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:700;color:#eef3ff;
+        position:absolute;left:50%;transform:translateX(-50%);
+    }
+    .top-bar-logout {
+        font-size:.85rem;color:var(--text-muted);
+        text-decoration:none;transition:color .2s;padding:.3rem 0;
+    }
+    .top-bar-logout:hover{color:var(--text);}
+
+    /* ── Action bar ──────────────────────────────── */
+    .action-bar {
+        display:flex;align-items:center;gap:.7rem;
+        padding:1rem 1.8rem;
+        border-bottom:1px solid rgba(255,255,255,0.05);
+    }
+    .action-btn {
+        display:flex;align-items:center;gap:.45rem;
+        padding:.55rem 1.2rem;border-radius:50px;
+        font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;
+        cursor:pointer;border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.05);color:var(--text);
+        transition:all .2s;min-height:38px;white-space:nowrap;
+    }
+    .action-btn svg{width:15px;height:15px;flex-shrink:0;}
+    .action-btn:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.22);}
+    .action-btn.mode-download{background:#fff;color:#080d18;border-color:#fff;}
+    .action-btn.mode-download:hover{background:#e8f0ff;}
+    .action-btn.mode-delete{background:rgba(220,70,70,.85);color:#fff;border-color:transparent;}
+    .action-btn.mode-delete:hover{background:rgba(220,70,70,1);}
+
+    /* ── Messages ────────────────────────────────── */
+    .messages-wrap{padding:.8rem 1.8rem 0;}
+    .message{
+        padding:.65rem 1rem;border-radius:10px;
+        font-size:.875rem;font-weight:500;margin-bottom:.45rem;line-height:1.45;
+    }
+    .message.error  {background:rgba(240,120,120,.10);color:var(--error);  border:1px solid rgba(240,120,120,.20);}
+    .message.success{background:rgba(110,201,138,.10);color:var(--success);border:1px solid rgba(110,201,138,.20);}
+    .message.warning{background:rgba(240,192, 96,.10);color:var(--warning);border:1px solid rgba(240,192, 96,.20);}
+
+    /* ── Media grid ──────────────────────────────── */
+    .media-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.9rem;
+        padding: 1.2rem 1.8rem;
+    }
+
+    .media-card {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(13,19,31,0.85);
+        border: 1px solid rgba(255,255,255,0.07);
+        cursor: pointer;
+        transition: transform 0.18s, border-color 0.18s;
+        aspect-ratio: 1 / 1;
+    }
+    .media-card:hover { transform: scale(1.02); border-color: rgba(255,255,255,0.18); }
+
+    /* Thumbnail area */
+    .media-thumb {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+    }
+
+    /* Image thumbnail */
+    .media-thumb img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* Video thumbnail — dark card with play icon */
+    .video-thumb {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(10,15,25,0.9);
+        color: rgba(255,255,255,0.4);
+    }
+    .video-thumb svg { width: 36px; height: 36px; }
+
+    /* Audio thumbnail — waveform */
+    .audio-thumb {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(10,15,25,0.9);
+        color: rgba(138, 155, 176, 0.75);
+        padding: 1rem;
+    }
+    .audio-thumb svg { width: 80%; max-width: 100px; height: auto; }
+
+    /* File name overlay at bottom */
+    .media-label {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        padding: 0.5rem 0.6rem 0.4rem;
+        background: linear-gradient(to top, rgba(5,8,15,0.9) 0%, transparent 100%);
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: rgba(220,228,245,0.85);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Checkbox (selection mode) */
+    .media-cb-wrap {
+        position: absolute; top: 0.5rem; left: 0.5rem;
+        opacity: 0; pointer-events: none; transition: opacity 0.18s;
+        z-index: 5;
+    }
+    .media-cb-wrap.visible { opacity: 1; pointer-events: auto; }
+    .media-cb {
+        width: 18px; height: 18px;
+        accent-color: #7eb8f7; cursor: pointer;
+    }
+
+    /* Selected card highlight */
+    .media-card.selected {
+        border-color: #7eb8f7;
+        box-shadow: 0 0 0 2px rgba(126,184,247,0.3);
+    }
+
+    /* ── Empty state ─────────────────────────────── */
+    .empty-state {
+        flex:1;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;
+        gap:1rem;padding:4rem 2rem;
+        color:var(--text-muted);text-align:center;
+    }
+    .empty-state svg{width:52px;height:52px;opacity:.3;}
+    .empty-state p{font-size:.95rem;line-height:1.6;}
+
+    /* ── Hidden forms ────────────────────────────── */
+    .hidden-forms{display:none;}
+
+    /* ── LIGHTBOX ────────────────────────────────── */
+    #lightbox {
+        display: none;
+        position: fixed; inset: 0;
+        z-index: 200;
+        background: rgba(2,4,10,0.96);
+        align-items: center; justify-content: center;
+        flex-direction: column;
+    }
+
+    .lb-topbar {
+        position: absolute; top: 0; left: 0; right: 0;
+        display: flex; align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.4rem;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+        z-index: 5;
+    }
+
+    .lb-name {
+        font-size: 0.88rem; font-weight: 500;
+        color: rgba(220,228,245,0.85);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 60%;
+    }
+
+    .lb-counter { font-size: 0.82rem; color: rgba(180,190,210,0.6); }
+
+    .lb-close {
+        background: none; border: none; cursor: pointer;
+        color: rgba(220,228,245,0.7); padding: 0.3rem;
+        transition: color 0.2s;
+        display: flex; align-items: center;
+    }
+    .lb-close:hover { color: #fff; }
+    .lb-close svg { width: 22px; height: 22px; }
+
+    /* Prev / Next arrows */
+    .lb-arrow {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 50%;
+        width: 44px; height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; color: rgba(220,228,245,0.75);
+        transition: background 0.2s, color 0.2s;
+        z-index: 5;
+    }
+    .lb-arrow:hover { background: rgba(255,255,255,0.16); color: #fff; }
+    .lb-arrow svg { width: 20px; height: 20px; }
+    .lb-prev { left: 1.2rem; }
+    .lb-next { right: 1.2rem; }
+
+    /* Media area */
+    #lb-media {
+        display: flex; align-items: center; justify-content: center;
+        width: 100%; height: 100%;
+        padding: 4.5rem 5rem;
+    }
+
+    .lb-img {
+        max-width: 100%; max-height: 100%;
+        object-fit: contain;
+        border-radius: 6px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+
+    .lb-video {
+        max-width: 100%; max-height: 100%;
+        border-radius: 6px;
+        outline: none;
+    }
+
+    .lb-audio-wrap {
+        display: flex; flex-direction: column;
+        align-items: center; gap: 2rem;
+        color: rgba(138,155,176,0.8);
+    }
+    .lb-audio-wrap svg { width: min(300px, 70vw); height: auto; }
+    .lb-audio { width: min(340px, 80vw); }
+
+    /* ── Responsive grid ─────────────────────────── */
+    @media (max-width: 900px) {
+        .media-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
+        .media-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; padding: 0.8rem 1rem; }
+        .top-bar     { padding: 0.9rem 1rem; }
+        .action-bar  { padding: 0.8rem 1rem; gap: 0.5rem; }
+        .action-btn  { padding: 0.5rem 0.9rem; font-size: 0.82rem; }
+        .messages-wrap { padding: 0.6rem 1rem 0; }
+        #lb-media    { padding: 3.5rem 3rem; }
+        .lb-arrow    { width: 36px; height: 36px; }
+        .lb-prev     { left: 0.5rem; }
+        .lb-next     { right: 0.5rem; }
+    }
+    @media (max-width: 380px) {
+        .media-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; padding: 0.6rem 0.7rem; }
+    }
+</style>
+{% endblock %}
+
+
+{% block stars %}
+<div class="star" style="left:4%;  top:8%;  width:2px;height:2px;animation-duration:3.1s;animation-delay:0.0s;"></div>
+<div class="star" style="left:15%; top:6%;  width:2px;height:2px;animation-duration:2.8s;animation-delay:0.5s;"></div>
+<div class="star" style="left:28%; top:4%;  width:3px;height:3px;animation-duration:3.7s;animation-delay:0.8s;"></div>
+<div class="star" style="left:40%; top:10%; width:2px;height:2px;animation-duration:6.0s;animation-delay:1.7s;"></div>
+<div class="star" style="left:52%; top:5%;  width:2px;height:2px;animation-duration:5.5s;animation-delay:2.8s;"></div>
+<div class="star" style="left:64%; top:12%; width:3px;height:3px;animation-duration:3.2s;animation-delay:1.5s;"></div>
+<div class="star" style="left:75%; top:8%;  width:2px;height:2px;animation-duration:4.2s;animation-delay:0.4s;"></div>
+<div class="star" style="left:88%; top:5%;  width:2px;height:2px;animation-duration:3.6s;animation-delay:1.4s;"></div>
+<div class="star" style="left:93%; top:25%; width:1px;height:1px;animation-duration:6.1s;animation-delay:0.7s;"></div>
+<div class="star" style="left:22%; top:35%; width:1px;height:1px;animation-duration:5.2s;animation-delay:2.1s;"></div>
+<div class="star" style="left:58%; top:28%; width:1px;height:1px;animation-duration:4.8s;animation-delay:0.6s;"></div>
+<div class="star" style="left:78%; top:38%; width:1px;height:1px;animation-duration:3.3s;animation-delay:2.0s;"></div>
+{% endblock %}
+
+
+{% block content %}
+<div class="cloud-page">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+        <a href="{% url 'cloud:home' %}" class="top-bar-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Home
+        </a>
+        <span class="top-bar-title">Media</span>
+        <a href="{% url 'login:logout' %}" class="top-bar-logout">Logout</a>
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+        <button class="action-btn" onclick="document.getElementById('upload-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+            Upload
+        </button>
+
+        <button class="action-btn" id="btn-download" onclick="toggleMode('download')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="8 17 12 21 16 17"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+            </svg>
+            Download
+        </button>
+
+        <button class="action-btn" id="btn-delete" onclick="toggleMode('delete')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            Delete
+        </button>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages-wrap">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Media grid -->
+    {% if media_files %}
+    <div class="media-grid" id="media-grid">
+        {% for mf in media_files %}
+        <div class="media-card" id="card-{{ mf.pk }}"
+             onclick="cardClick({{ forloop.counter0 }}, {{ mf.pk }}, event)">
+
+            <!-- Checkbox (selection mode) -->
+            <div class="media-cb-wrap" id="cbw-{{ mf.pk }}">
+                <input class="media-cb" type="checkbox"
+                       value="{{ mf.pk }}" id="mcb-{{ mf.pk }}"
+                       onclick="event.stopPropagation()">
+            </div>
+
+            <!-- Thumbnail -->
+            <div class="media-thumb">
+                {% if mf.is_image %}
+                    <img src="{% url 'cloud:serve_media' mf.pk %}"
+                         alt="{{ mf.original_name }}"
+                         loading="lazy">
+
+                {% elif mf.is_video %}
+                    <div class="video-thumb">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.06)"
+                                    stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+                            <polygon points="10 8 16 12 10 16" fill="rgba(255,255,255,0.5)"/>
+                        </svg>
+                    </div>
+
+                {% elif mf.is_audio %}
+                    <div class="audio-thumb">
+                        <!-- Waveform SVG matching the reference image -->
+                        <svg viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                                <line x1="6"  y1="38" x2="6"  y2="42"/>
+                                <line x1="14" y1="30" x2="14" y2="50"/>
+                                <line x1="22" y1="22" x2="22" y2="58"/>
+                                <line x1="30" y1="14" x2="30" y2="66"/>
+                                <line x1="38" y1="20" x2="38" y2="60"/>
+                                <line x1="46" y1="8"  x2="46" y2="72"/>
+                                <line x1="54" y1="16" x2="54" y2="64"/>
+                                <line x1="62" y1="6"  x2="62" y2="74"/>
+                                <line x1="70" y1="18" x2="70" y2="62"/>
+                                <line x1="78" y1="10" x2="78" y2="70"/>
+                                <line x1="86" y1="24" x2="86" y2="56"/>
+                                <line x1="94" y1="16" x2="94" y2="64"/>
+                                <line x1="102" y1="28" x2="102" y2="52"/>
+                                <line x1="110" y1="33" x2="110" y2="47"/>
+                                <line x1="118" y1="37" x2="118" y2="43"/>
+                            </g>
+                        </svg>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Label -->
+            <div class="media-label" title="{{ mf.original_name }}">{{ mf.original_name }}</div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p>No media yet.<br>Click <strong>Upload</strong> to add images, videos, or audio.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+
+<!-- ── Lightbox ──────────────────────────────────────────────────── -->
+<div id="lightbox" onclick="lbBgClick(event)">
+
+    <!-- Top bar -->
+    <div class="lb-topbar">
+        <span class="lb-name" id="lb-name"></span>
+        <span class="lb-counter" id="lb-counter"></span>
+        <button class="lb-close" onclick="closeLightbox()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Prev arrow -->
+    <button class="lb-arrow lb-prev" onclick="lbPrev(); event.stopPropagation()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+    </button>
+
+    <!-- Media container -->
+    <div id="lb-media"></div>
+
+    <!-- Next arrow -->
+    <button class="lb-arrow lb-next" onclick="lbNext(); event.stopPropagation()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+        </svg>
+    </button>
+
+</div>
+
+
+<!-- Hidden forms -->
+<div class="hidden-forms">
+    <form id="form-upload" method="post"
+          action="{% url 'cloud:upload_media' %}"
+          enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" id="upload-input" name="files" multiple
+               accept="image/*,video/*,audio/*"
+               onchange="document.getElementById('form-upload').submit()">
+    </form>
+
+    <form id="form-download" method="post"
+          action="{% url 'cloud:download_media_bulk' %}">
+        {% csrf_token %}
+    </form>
+
+    <form id="form-delete" method="post"
+          action="{% url 'cloud:delete_media' %}">
+        {% csrf_token %}
+    </form>
+</div>
+
+
+<script>
+// ── Media items array (built from Django context) ────────────────────
+const mediaItems = [
+    {% for mf in media_files %}
+    {
+        pk:          {{ mf.pk }},
+        serveUrl:    "{% url 'cloud:serve_media' mf.pk %}",
+        isImage:     {{ mf.is_image|yesno:"true,false" }},
+        isVideo:     {{ mf.is_video|yesno:"true,false" }},
+        isAudio:     {{ mf.is_audio|yesno:"true,false" }},
+        name:        "{{ mf.original_name|escapejs }}",
+    },
+    {% endfor %}
+];
+
+// Waveform SVG string reused inside lightbox for audio
+const waveformSVG = `<svg viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="currentColor" stroke-width="3" stroke-linecap="round">
+        <line x1="6"  y1="38" x2="6"  y2="42"/><line x1="14" y1="30" x2="14" y2="50"/>
+        <line x1="22" y1="22" x2="22" y2="58"/><line x1="30" y1="14" x2="30" y2="66"/>
+        <line x1="38" y1="20" x2="38" y2="60"/><line x1="46" y1="8"  x2="46" y2="72"/>
+        <line x1="54" y1="16" x2="54" y2="64"/><line x1="62" y1="6"  x2="62" y2="74"/>
+        <line x1="70" y1="18" x2="70" y2="62"/><line x1="78" y1="10" x2="78" y2="70"/>
+        <line x1="86" y1="24" x2="86" y2="56"/><line x1="94" y1="16" x2="94" y2="64"/>
+        <line x1="102" y1="28" x2="102" y2="52"/><line x1="110" y1="33" x2="110" y2="47"/>
+        <line x1="118" y1="37" x2="118" y2="43"/>
+    </g>
+</svg>`;
+
+
+// ── Two-click selection mode ─────────────────────────────────────────
+let activeMode  = null;
+let lbOpen      = false;
+let currentIdx  = 0;
+let touchStartX = 0;
+
+function toggleMode(mode) {
+    if (activeMode === mode) {
+        const ids = getCheckedIds();
+        if (ids.length > 0) submitForm('form-' + mode, ids);
+        cancelMode();
+    } else {
+        cancelMode();
+        activeMode = mode;
+        setCheckboxes(true);
+        document.getElementById('btn-' + mode).classList.add('mode-' + mode);
+    }
+}
+
+function cancelMode() {
+    if (!activeMode) return;
+    document.getElementById('btn-' + activeMode).classList.remove('mode-' + activeMode);
+    activeMode = null;
+    setCheckboxes(false);
+    uncheckAll();
+    document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
+}
+
+function setCheckboxes(visible) {
+    document.querySelectorAll('.media-cb-wrap').forEach(el => el.classList.toggle('visible', visible));
+}
+
+function uncheckAll() {
+    document.querySelectorAll('.media-cb').forEach(cb => cb.checked = false);
+}
+
+function getCheckedIds() {
+    return [...document.querySelectorAll('.media-cb:checked')].map(cb => cb.value);
+}
+
+// Card click — either open lightbox or toggle selection
+function cardClick(idx, pk, event) {
+    if (activeMode) {
+        event.stopPropagation();
+        const cb   = document.getElementById('mcb-' + pk);
+        const card = document.getElementById('card-' + pk);
+        if (cb) {
+            cb.checked = !cb.checked;
+            card.classList.toggle('selected', cb.checked);
+        }
+    } else {
+        openLightbox(idx);
+    }
+}
+
+function submitForm(formId, ids) {
+    const form = document.getElementById(formId);
+    form.querySelectorAll('input[name="file_ids"]').forEach(el => el.remove());
+    ids.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'file_ids'; inp.value = id;
+        form.appendChild(inp);
+    });
+    form.submit();
+}
+
+
+// ── Lightbox ─────────────────────────────────────────────────────────
+const lb      = document.getElementById('lightbox');
+const lbMedia = document.getElementById('lb-media');
+
+function openLightbox(idx) {
+    if (!mediaItems.length) return;
+    currentIdx = idx;
+    lbOpen = true;
+    renderLightbox();
+    lb.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+    lbOpen = false;
+    lb.style.display = 'none';
+    document.body.style.overflow = '';
+    stopMedia();
+    lbMedia.innerHTML = '';
+}
+
+function stopMedia() {
+    lbMedia.querySelectorAll('video, audio').forEach(el => {
+        el.pause();
+        el.src = '';
+    });
+}
+
+function lbNext() {
+    currentIdx = (currentIdx + 1) % mediaItems.length;
+    renderLightbox();
+}
+
+function lbPrev() {
+    currentIdx = (currentIdx - 1 + mediaItems.length) % mediaItems.length;
+    renderLightbox();
+}
+
+function renderLightbox() {
+    stopMedia();
+    const item = mediaItems[currentIdx];
+    let html = '';
+
+    if (item.isImage) {
+        html = `<img src="${item.serveUrl}" alt="${item.name}" class="lb-img">`;
+    } else if (item.isVideo) {
+        html = `<video src="${item.serveUrl}" controls autoplay playsinline class="lb-video"></video>`;
+    } else if (item.isAudio) {
+        html = `<div class="lb-audio-wrap">
+                    ${waveformSVG}
+                    <audio src="${item.serveUrl}" controls autoplay class="lb-audio"></audio>
+                </div>`;
+    }
+
+    lbMedia.innerHTML = html;
+    document.getElementById('lb-name').textContent    = item.name;
+    document.getElementById('lb-counter').textContent = `${currentIdx + 1} / ${mediaItems.length}`;
+}
+
+// Click on lightbox background (not media) closes it
+function lbBgClick(e) {
+    if (e.target === lb || e.target === lbMedia) closeLightbox();
+}
+
+// ── Keyboard navigation ───────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (!lbOpen) {
+        if (e.key === 'Escape') cancelMode();
+        return;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  lbNext();
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    lbPrev();
+    if (e.key === 'Escape')                               closeLightbox();
+});
+
+// ── Swipe gestures ────────────────────────────────────────────────────
+lb.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+
+lb.addEventListener('touchend', e => {
+    const diff = touchStartX - e.changedTouches[0].screenX;
+    if (Math.abs(diff) > 48) {
+        if (diff > 0) lbNext();
+        else          lbPrev();
+    }
+}, { passive: true });
+</script>
+
+{% endblock %}

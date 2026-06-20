@@ -1,0 +1,86 @@
+#  Run with: docker compose up -d
+# ─────────────────────────────────────────────
+
+services:
+
+  # ── Django + Gunicorn ───────────────────────
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kornercloud_django
+    restart: unless-stopped
+
+    # Load all env vars from .env into the container
+    env_file:
+      - core/.env
+
+    volumes:
+      # ── Persistent data ──────────────────────
+      # These paths must survive container rebuilds.
+      # Named volumes (defined below) handle this —
+      # Docker stores them on the host outside the container.
+
+      # SQLite database — all user data lives here
+      - db_data:/app/core/data/
+
+      # User uploads (Files + Media pages)
+      - media_data:/app/core/media
+
+      # Static files shared with nginx
+      # nginx reads from here
+      - static_data:/app/core/staticfiles
+
+    # Django/Gunicorn only reachable internally on port 8000
+    # nginx is the only service that talks to it
+    expose:
+      - "8000"
+
+    networks:
+      - kornercloud_net
+
+
+  # ── nginx ───────────────────────────────────
+  nginx:
+    image: nginx:stable-alpine  # official image, alpine = smallest size
+    container_name: kornercloud_nginx
+    restart: unless-stopped
+
+    ports:
+      # Host port 1212 -> nginx port 80 inside container
+      - "1212:80"
+
+    volumes:
+      # nginx config
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+      # Serve static files directly — nothing sensitive here
+      - static_data:/app/staticfiles:ro
+
+
+
+    # nginx depends on django being started first —
+    # it forwards requests to django, so django must exist
+    depends_on:
+      - django
+
+    networks:
+      - kornercloud_net
+
+
+# ── Named volumes ───────────────────────────────
+# Docker manages these on the host — data persists
+# across container restarts and rebuilds
+volumes:
+  db_data:
+  media_data:
+  static_data:
+
+
+# ── Internal network ────────────────────────────
+# Django and nginx communicate privately on this network
+# Nothing outside Docker can reach Django directly
+networks:
+  kornercloud_net:
+    driver: bridge
+
