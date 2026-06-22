@@ -23,20 +23,23 @@ A self-hosted personal cloud server with secure login, two-factor authentication
 - **Responsive design** — works on desktop and mobile, down to small phone screens
 
 - **One-command setup** — `docker compose up --build` and you're running
+
 ## Screenshots
  
 | Login | 2FA Setup |
 |---|---|
-| ![Login](docs/screenshots/login.png) | ![2FA Setup](docs/screenshots/2fa-setup.png) |
+| ![Login](docs/screenshots/login_phone.png) | ![2FA Setup](docs/screenshots/2fa.png) |
  
 | Cloud Home | Files |
 |---|---|
-| ![Cloud Home](docs/screenshots/cloud-home.png) | ![Files](docs/screenshots/files-page.png) |
+| ![Cloud Home](docs/screenshots/cloud_home.png) | ![Files](docs/screenshots/files_page.png) |
  
 | Media Grid | Media Lightbox |
 |---|---|
-| ![Media Grid](docs/screenshots/media-grid.png) | ![Media Lightbox](docs/screenshots/media-lightbox.png) |
- 
+| ![Media Grid](docs/screenshots/media_grid.png) | ![Media Lightbox](docs/screenshots/media_lightbox.png) |
+
+<br>
+
 ## Getting Started
  
 ### Prerequisites
@@ -51,7 +54,8 @@ That's it. Python is optional to install on your machine, because everything run
 git clone https://github.com/yourusername/KornerCloud.git
 cd KornerCloud
 ```
- 
+<br>
+
 ### 2. Configure your environment
  
 Copy (rename) the example environment file:
@@ -78,7 +82,8 @@ Paste the printed value into `core/.env`, as a `SECRET_KEY`:
 DEBUG=False
 SECRET_KEY=paste-your-generated-key-here
 ```
- 
+<br>
+
  ### 3. Build and run
  
 From the repository root (where `docker-compose.yml` lives):
@@ -96,7 +101,9 @@ http://<your-machine-ip>:1212
 ```
  
 On the same machine, `http://localhost:1212` also works.
- 
+
+<br>
+
 ### 4. First login
  
 KornerCloud ships with one pre-created account:
@@ -106,6 +113,8 @@ KornerCloud ships with one pre-created account:
 Logging in with the default password triggers a forced password change — you'll be redirected to set a new one immediately. After that, log in again with your new password.
  
 Next comes two-factor setup: a QR code appears **once**. Scan it with Google Authenticator (or any TOTP app), then enter the 6-digit code to complete login. From then on, only the 6-digit code is needed — the QR code won't appear again.
+
+<br>
 
 ## Using KornerCloud
  
@@ -117,11 +126,22 @@ The Files page is for everything that isn't an image, video, or audio file — d
 - **Download** — click Download, select the file(s) you want, click Download again to confirm. Selecting multiple files downloads them as a single ZIP.
 - **Delete** — click Delete, select the file(s), click Delete again to confirm
 Clicking Download or Delete a second time with nothing selected cancels the action.
- 
+
+<br>
+
 ### Media
  
 The Media page works the same way, but only accepts images, video, and audio. Each item shows a thumbnail (or a waveform icon for audio). Clicking any item opens it full-size in a lightbox, where you can navigate with the on-screen arrows, swipe gestures, or your keyboard's arrow keys.
- 
+
+<br>
+
+### Simultaneous Access
+
+- **Multiple devices can use KornerCloud simultaneously** once logged in.
+- However, since there is only one account, each device must log in separately — and because the 2FA code rotates *every 30 seconds*, two devices cannot complete the login process at the exact same moment. In practice this is rarely an issue: log in one device, then the other.
+
+<br>
+
 ## Remote Access via Tailscale
  
 KornerCloud is designed for use on a local network, but if you want to access it from outside your home — for yourself while travelling, or for friends and family — [Tailscale](https://tailscale.com) is the easiest way to do it.
@@ -134,6 +154,8 @@ Tailscale creates a private network between your devices without any router conf
 4. From any connected device, visit `http://<tailscale-ip>:1212` — it works exactly like being on the same local network
 
 Or you can use WireGuard, which is a bit more technical to set up and manage. It's a great choice if you want to avoid relying on a third-party SaaS management plane.
+
+<br>
 
 ## Project Structure
  
@@ -155,7 +177,9 @@ KornerCloud/
 ```
  
 `data/`, `media/`, and `staticfiles/` are created automatically as Docker volumes and are not part of the repository.
- 
+
+<br>
+
 ## Tech Stack
  
 - **Backend** — Django 6.0
@@ -165,9 +189,14 @@ KornerCloud/
 - **App Server** — Gunicorn (`gthread` workers)
 - **Reverse Proxy** — nginx
 - **Containerization** — Docker + Docker Compose v2
+
+<br>
+
 ## Design Decisions
  
 A few choices in this project were made deliberately, and might be worth explaining for anyone reading the code.
+
+<br>
  
 **Dynamic default-password detection.** Rather than storing a "must change password" flag in the database, the login view simply checks `user.check_password(settings.DEFAULT_USER_PASSWORD)` after authentication succeeds. If it matches, the user is redirected to set a new password. This keeps the `login` app's `models.py` empty — one less model to maintain, and one less thing that can fall out of sync.
  
@@ -184,6 +213,8 @@ A few choices in this project were made deliberately, and might be worth explain
 **Unlimited, streaming file transfers.** nginx is configured with `client_max_body_size 0`, `proxy_request_buffering off`, and `proxy_buffering off`. This means a 50GB upload streams straight through to Django without nginx ever buffering the whole file, and a 50GB download streams straight back to the browser the same way.
  
 **`ALLOWED_HOSTS = ['*']` in production.** This looks alarming out of context, but it's safe here specifically because of how the app is built: there are no password-reset emails, no `request.build_absolute_uri()` calls, and nothing that uses the `Host` header to generate links or redirects. Combined with the fact that this app is designed for a private local network or VPN — never direct public exposure — disabling the host check removes a configuration headache (IPs changing between routers) without opening any real attack surface.
+
+<br>
  
 ## Security Notes & Limitations
  
