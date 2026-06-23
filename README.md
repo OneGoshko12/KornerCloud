@@ -67,13 +67,13 @@ cp core/env_example core/.env
 Open `core/.env` and generate a `SECRET_KEY`. Run this in your terminal:
  
 ```bash
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+python -c "import secrets; print(secrets.token_urlsafe(50))"
 ```
  
 If you don't have Python installed, use Docker instead (Windows users: run this in **cmd**, not PowerShell):
  
 ```bash
-docker run --rm python:3.14-slim python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+docker run --rm python:3.14-slim python -c "import secrets; print(secrets.token_urlsafe(50))"
 ```
  
 Paste the printed value into `core/.env`, as a `SECRET_KEY`:
