@@ -38,6 +38,11 @@ A self-hosted personal cloud server with secure login, two-factor authentication
 |---|---|
 | ![Media Grid](docs/screenshots/media_grid.png) | ![Media Lightbox](docs/screenshots/media_lightbox.png) |
 
+| Media Grid (phone) | Media Lightbox (phone) |
+|---|---|
+| ![Media Grid](docs/screenshots/media_grid_phone.png) | ![Media Lightbox](docs/screenshots/media_lightbox_phone.png) |
+
+
 <br>
 
 ## Getting Started
