@@ -66,7 +66,7 @@ cd KornerCloud
 Copy (rename) the example environment file:
  
 ```bash
-cp core/env_example core/.env
+cp core/.env.example core/.env
 ```
  
 Open `core/.env` and generate a `SECRET_KEY`. Run this in your terminal:
