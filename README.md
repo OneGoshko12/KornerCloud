@@ -63,10 +63,10 @@ cd KornerCloud
 
 ### 2. Configure your environment
  
-Copy (rename) the example environment file:
+Rename the example environment file:
  
 ```bash
-cp core/.env.example core/.env
+mv -i core/.env.example core/.env
 ```
  
 Open `core/.env` and generate a `SECRET_KEY`. Run this in your terminal:
@@ -87,6 +87,11 @@ Paste the printed value into `core/.env`, as a `SECRET_KEY`:
 DEBUG=False
 SECRET_KEY=paste-your-generated-key-here
 ```
+<br>
+
+- If you skip renaming *.env.example* to *.env*, **Docker will fail to start entirely.**
+- Once renamed, replace the placeholder SECRET_KEY with a real generated value — using the placeholder is insecure.
+
 <br>
 
  ### 3. Build and run
